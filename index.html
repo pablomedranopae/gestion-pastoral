@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión Pastoral - Distrito</title>
+    <!-- Tailwind CSS para diseño moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Librerías para Excel, PDF, TXT y FullCalendar (Calendario Visual) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .fc-event-title {
+            white-space: normal !important;
+            overflow: visible !important;
+            word-break: break-word !important;
+        }
+        @media print {
+            @page {
+                size: landscape;
+                margin: 10mm;
+            }
+            body.print-atencion * {
+                visibility: hidden;
+            }
+            body.print-atencion #section-atencion-printable, 
+            body.print-atencion #section-atencion-printable * {
+                visibility: visible;
+            }
+            body.print-atencion #section-atencion-printable {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            body.print-agenda * {
+                visibility: hidden;
+            }
+            body.print-agenda #section-agenda-printable, 
+            body.print-agenda #section-agenda-printable * {
+                visibility: visible;
+            }
+            body.print-agenda #section-agenda-printable {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background: white;
+            }
+            body.print-estudiantes * {
+                visibility: hidden;
+            }
+            body.print-estudiantes #section-oracion-printable,
+            body.print-estudiantes #section-oracion-printable * {
+                visibility: visible;
+            }
+            body.print-estudiantes #section-oracion-printable {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background: white;
+            }
+            body.print-creciendo * {
+                visibility: hidden;
+            }
+            body.print-creciendo #section-creciendo-printable,
+            body.print-creciendo #section-creciendo-printable * {
+                visibility: visible;
+            }
+            body.print-creciendo #section-creciendo-printable {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #calendar-atencion {
+                font-size: 11px !important;
+                max-height: 95vh !important;
+            }
+        }
+        .print-header {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-200">
+
+    <!-- PANTALLA DE LOGIN (INICIO DE SESIÓN) -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-blue-900 text-amber-400 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-inner">
+                    <i class="fa-solid fa-church"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 dark:text-white">Gestión Pastoral</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Panel de control unificado</p>
+            </div>
+
+            <div id="auth-error" class="hidden bg-red-50 text-red-600 p-3 rounded-xl text-xs font-semibold text-center"></div>
+
+            <!-- BOTÓN DE INICIO DE SESIÓN CON GOOGLE -->
+            <button onclick="iniciarSesionGoogle()" class="w-full bg-white hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold py-3.5 px-4 rounded-xl text-sm transition border border-slate-300 dark:border-slate-600 shadow-sm flex items-center justify-center gap-3">
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.15C3.15 21.3 7.22 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.18C.43 8.13 0 9.87 0 12s.43 3.87 1.18 5.39l4.09-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.7 1.18 6.61l4.09 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                </svg>
+                Iniciar sesión con Google
+            </button>
+
+            <div class="flex items-center my-4">
+                <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                <span class="px-3 text-xs text-slate-400 uppercase font-semibold">o con correo</span>
+                <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Correo Electrónico</label>
+                    <input type="email" id="login-email" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none" placeholder="tucorreo@dominio.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Contraseña</label>
+                    <input type="password" id="login-password" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none" placeholder="••••••••">
+                </div>
+                <button onclick="iniciarSesionEmail()" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-lg">
+                    Iniciar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR PRINCIPAL (OCULTO HASTA INICIAR SESIÓN) -->
+    <div id="app" class="min-h-screen flex flex-col hidden">
+        
+        <!-- HEADER -->
+        <header class="bg-blue-900 text-white shadow-md no-print">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="mostrarVista('home')">
+                    <i class="fa-solid fa-church text-2xl text-amber-400"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Gestión Pastoral</h1>
+                        <p class="text-xs text-blue-200">Panel de Control Distrital</p>
+                    </div>
+                </div>
+                <div id="header-actions" class="hidden md:flex items-center space-x-3">
+                    <button onclick="mostrarVista('home')" class="bg-blue-800 px-3 py-1.5 rounded-lg text-sm hover:bg-blue-700 transition"><i class="fa-solid fa-house mr-1"></i> Mis Iglesias</button>
+                    <!-- BOTÓN DE TEMA OSCURO / CLARO -->
+                    <button onclick="toggleDarkMode()" class="bg-blue-800 p-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center justify-center w-9 h-9" title="Cambiar tema">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+                    <button onclick="cerrarSesion()" class="bg-red-700/80 px-3 py-1.5 rounded-lg text-sm hover:bg-red-700 transition"><i class="fa-solid fa-right-from-bracket mr-1"></i> Salir</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- CUERPO DINÁMICO -->
+        <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+            
+            <!-- VISTA 1: LISTADO DE IGLESIAS (HOME) -->
+            <div id="view-home" class="space-y-6">
+                <!-- Tarjeta de bienvenida y botón añadir -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Mis Iglesias Asignadas</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Selecciona una iglesia para ver su información detallada o agrega una nueva.</p>
+                    </div>
+                    <button onclick="abrirModalIglesia()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Añadir Iglesia
+                    </button>
+                </div>
+
+                <!-- RESUMEN / TARJETAS GLOBALES DEL DISTRITO -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Tarjeta 1: Blanco de Bautismos Global -->
+                    <div class="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-6 rounded-2xl shadow-md space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-xl">
+                                    <i class="fa-solid fa-water"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-base">Progreso Bautismos</h3>
+                                    <p class="text-xs text-blue-200">Consolidado distrital</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="distrito-porcentaje" class="text-xl font-black text-amber-400">0%</span>
+                                <span class="text-xs text-blue-200 block"><span id="distrito-actual">0</span> / <span id="distrito-meta">0</span></span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-blue-950/60 h-2.5 rounded-full overflow-hidden border border-blue-800/50">
+                            <div id="distrito-barra" class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta 2: Estudiantes Distrito -->
+                    <div onclick="abrirConsolidadoEstudiantes()" class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-6 rounded-2xl shadow-md space-y-3 cursor-pointer hover:shadow-lg hover:scale-[1.01] transition flex flex-col justify-between">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center text-xl">
+                                    <i class="fa-solid fa-book-bible"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-base">Estudiantes Distrito</h3>
+                                    <p class="text-xs text-emerald-200">Ver listado general</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="distrito-total-estudiantes" class="text-2xl font-black text-emerald-300">0</span>
+                                <span class="text-xs text-emerald-200 block">estudiantes</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-emerald-200 pt-1 border-t border-emerald-700/50">
+                            <span>Ver cuadro de oración</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta 3: Creciendo en Cristo -->
+                    <div onclick="abrirConsolidadoCreciendo()" class="bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-900 p-6 rounded-2xl shadow-md space-y-3 cursor-pointer hover:shadow-lg hover:scale-[1.01] transition flex flex-col justify-between">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-white/30 text-amber-950 flex items-center justify-center text-xl shadow-inner">
+                                    <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12,2C10.5,2 9,2.5 8,3.5C6.5,2 4,2.5 3,4C2,5.5 2.5,7.5 4,8.5C3,9.5 2.5,11 3,12.5C3.5,14 5,15 6.5,15C7.5,16.5 9.5,17 11,16.5V20H13V16.5C14.5,17 16.5,16.5 17.5,15C19,15 20.5,14 21,12.5C21.5,11 21,9.5 20,8.5C21.5,7.5 22,5.5 21,4C20,2.5 17.5,2 16,3.5C15,2.5 13.5,2 12,2M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4M6.5,7A1.5,1.5 0 0,1 8,8.5A1.5,1.5 0 0,1 6.5,10A1.5,1.5 0 0,1 5,8.5A1.5,1.5 0 0,1 6.5,7M17.5,7A1.5,1.5 0 0,1 19,8.5A1.5,1.5 0 0,1 17.5,10A1.5,1.5 0 0,1 16,8.5A1.5,1.5 0 0,1 17.5,7M12,9.5A1.5,1.5 0 0,1 13.5,11A1.5,1.5 0 0,1 12,12.5A1.5,1.5 0 0,1 10.5,11A1.5,1.5 0 0,1 12,9.5M8,12A1.5,1.5 0 0,1 9.5,13.5A1.5,1.5 0 0,1 8,15A1.5,1.5 0 0,1 6.5,13.5A1.5,1.5 0 0,1 8,12M16,12A1.5,1.5 0 0,1 17.5,13.5A1.5,1.5 0 0,1 16,15A1.5,1.5 0 0,1 14.5,13.5A1.5,1.5 0 0,1 16,12Z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-base text-amber-950">Creciendo en Cristo</h3>
+                                    <p class="text-xs text-amber-900/80">Discipulado de nuevos conversos</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="distrito-total-creciendo" class="text-2xl font-black text-amber-950">0</span>
+                                <span class="text-xs text-amber-900/80 block">Nuevos conversos</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-amber-950 font-semibold pt-1 border-t border-yellow-600/40">
+                            <span>Ver progreso semanal</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APARTADO DESPLEGABLE: PROCESO DE DISCIPULADO POR IGLESIA -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div onclick="toggleSeccionDiscipulado()" class="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-blue-900 text-amber-400 flex items-center justify-center text-xl shadow-inner">
+                                <i class="fa-solid fa-stairs"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Proceso de Discipulado por Iglesia</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Haz clic aquí para desplegar el estado actual del distrito a través de las 5 fases y 14 semanas del plan.</p>
+                            </div>
+                        </div>
+                        <div class="text-slate-400 text-lg">
+                            <i id="icono-desplegar-discipulado" class="fa-solid fa-chevron-down transition-transform"></i>
+                        </div>
+                    </div>
+
+                    <div id="contenedor-proceso-discipulado-distrito" class="hidden p-6 border-t border-slate-100 dark:border-slate-700 space-y-4"></div>
+                </div>
+
+                <!-- APARTADO DESPLEGABLE: AGENDA DE BAUTISMOS -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div onclick="toggleSeccionAgenda()" class="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-blue-900 text-amber-400 flex items-center justify-center text-xl shadow-inner">
+                                <i class="fa-solid fa-water"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Agenda de Bautismos Distrital</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Haz clic aquí para desplegar la programación oficial de bautismos del distrito.</p>
+                            </div>
+                        </div>
+                        <div class="text-slate-400 text-lg">
+                            <i id="icono-desplegar-agenda" class="fa-solid fa-chevron-down transition-transform"></i>
+                        </div>
+                    </div>
+
+                    <div id="contenedor-agenda-bautismos" class="hidden p-6 border-t border-slate-100 dark:border-slate-700 space-y-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <h4 class="font-bold text-slate-800 dark:text-slate-200">Vidas que deciden por Cristo</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">"Así también habrá más gozo en el cielo por un pecador que se arrepiente..." - Lucas 15:7</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="abrirModalAgendaBautismo()" class="bg-blue-900 hover:bg-blue-800 text-white text-sm px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                                    <i class="fa-solid fa-plus"></i> Agregar Bautismo
+                                </button>
+                                <button onclick="imprimirAgendaBautismos()" class="bg-slate-900 hover:bg-slate-800 text-white text-sm px-4 py-2 rounded-xl transition flex items-center gap-2 shadow-sm">
+                                    <i class="fa-solid fa-print"></i> Imprimir / PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="section-agenda-printable" class="bg-white dark:bg-slate-800 p-2">
+                            <div class="hidden print-header text-center mb-4">
+                                <h2 class="text-2xl font-bold uppercase tracking-wide">Distrito Pastoral</h2>
+                                <h1 class="text-xl font-black uppercase text-blue-900 my-1">Agenda de Bautismos Distrital</h1>
+                                <p class="text-xs text-slate-500 italic">"Vidas que deciden por Cristo"</p>
+                                <hr class="my-2 border-slate-300">
+                            </div>
+
+                            <div class="overflow-x-auto pt-2">
+                                <table class="w-full text-left border-collapse border border-blue-900/20 dark:border-slate-700">
+                                    <thead>
+                                        <tr class="bg-blue-900 text-white text-xs font-semibold uppercase">
+                                            <th class="py-3 px-4 border-r border-blue-800 w-12 text-center">#</th>
+                                            <th class="py-3 px-4 border-r border-blue-800"><i class="fa-solid fa-user mr-1"></i> Nombre</th>
+                                            <th class="py-3 px-4 border-r border-blue-800"><i class="fa-solid fa-book-open mr-1"></i> Inst. Bíblico</th>
+                                            <th class="py-3 px-4 border-r border-blue-800"><i class="fa-solid fa-church mr-1"></i> Iglesia</th>
+                                            <th class="py-3 px-4 border-r border-blue-800"><i class="fa-solid fa-calendar mr-1"></i> Fecha</th>
+                                            <th class="py-3 px-4 text-right no-print">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-agenda-bautismos-body" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APARTADO DESPLEGABLE: ATENCIÓN PASTORAL -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div onclick="toggleSeccionAtencion()" class="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/50 text-blue-900 dark:text-blue-300 flex items-center justify-center text-xl shadow-inner">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Atención Pastoral (Calendario de Visitas)</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Haz clic aquí para desplegar el calendario mensual y programar tus visitas a las iglesias.</p>
+                            </div>
+                        </div>
+                        <div class="text-slate-400 text-lg">
+                            <i id="icono-desplegar-atencion" class="fa-solid fa-chevron-down transition-transform"></i>
+                        </div>
+                    </div>
+
+                    <div id="contenedor-calendario-atencion" class="hidden p-6 border-t border-slate-100 dark:border-slate-700 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 italic">Haz clic en cualquier día del calendario para agregar, editar o borrar el lugar de atención (ej. Huequemahuida, Pitraco).</p>
+                            <button onclick="imprimirAtencion()" class="bg-slate-900 hover:bg-slate-800 text-white text-sm px-4 py-2 rounded-xl transition flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-print"></i> Imprimir / Descargar Calendario PDF
+                            </button>
+                        </div>
+
+                        <div class="hidden print-header text-center mb-4">
+                            <h2 class="text-2xl font-bold uppercase tracking-wide">Distrito Pastoral</h2>
+                            <h1 class="text-xl font-black uppercase text-blue-900 my-1">CALENDARIO DE ATENCIÓN PASTORAL</h1>
+                            <hr class="my-2 border-slate-300">
+                        </div>
+
+                        <div id="section-atencion-printable" class="bg-white dark:bg-slate-800 p-2">
+                            <div id="calendar-atencion" class="min-h-[600px] text-slate-800 dark:text-slate-100"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cuadrícula de Iglesias -->
+                <div id="grid-iglesias" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <!-- VISTA 2: PANEL DE LA IGLESIA SELECCIONADA -->
+            <div id="view-church" class="hidden space-y-6">
+                <!-- Barra superior de la iglesia -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+                    <div>
+                        <button onclick="mostrarVista('home')" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium mb-2 inline-flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-left"></i> Volver a mis iglesias
+                        </button>
+                        <h2 id="church-title" class="text-2xl font-bold text-slate-900 dark:text-white">Nombre de la Iglesia</h2>
+                        <p id="church-subtitle" class="text-sm text-slate-500 dark:text-slate-400">Panel administrativo distrital</p>
+                    </div>
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <button onclick="abrirModalFaseIglesia()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl transition shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-stairs"></i> Configurar Fase / Semana
+                        </button>
+
+                        <div class="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 px-4 py-3 rounded-xl flex items-center gap-4">
+                            <div class="text-blue-600 dark:text-blue-400 text-2xl"><i class="fa-solid fa-water"></i></div>
+                            <div>
+                                <p class="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase">Blanco de Bautismos</p>
+                                <p class="text-lg font-bold text-blue-900 dark:text-blue-200"><span id="bautismos-actual">0</span> / <span id="bautismos-meta">10</span></p>
+                            </div>
+                        </div>
+                        <button onclick="abrirModalMeta()"
